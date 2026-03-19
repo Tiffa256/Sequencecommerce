@@ -1,0 +1,236 @@
+// src/components/Footer.jsx
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import logo from "../assets/images/header/logo_black.png";
+import chatIcon from "../assets/images/header/chat.png";
+import CustomerServiceModal from "./CustomerServiceModal.jsx";
+
+export default function Footer() {
+  // Only layout / size inline styles here. Do NOT change images, icons or color rules.
+  const footerStyle = {
+    paddingTop: "1rem",
+    paddingBottom: "0.25rem",
+  };
+
+  const footerMainStyle = {
+    maxWidth: 1100,
+    margin: "0 auto",
+    position: "relative",
+    paddingBottom: 0,
+  };
+
+  const logoRowStyle = {
+    textAlign: "left",
+    marginBottom: "0.15rem",
+  };
+
+  const aboutStyle = {
+    margin: "0 0 0.75rem 0",
+    maxWidth: "900px",
+    lineHeight: 1.5,
+  };
+
+  const linksRowStyle = {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "4rem",
+    flexWrap: "nowrap",
+    marginBottom: "0.5rem",
+    position: "relative",
+    width: "100%",
+  };
+
+  const companyColumnStyle = {
+    minWidth: 220,
+    flex: "0 0 200px",
+    textAlign: "left",
+  };
+
+  const informationColumnStyle = {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 220,
+    textAlign: "right",
+  };
+
+  const linkStyle = {
+    display: "block",
+    fontSize: "0.9rem",
+    textDecoration: "none",
+    marginBottom: "0.5rem",
+  };
+
+  // Chat button (fixed) - keep visuals from CSS, only adjust position/size here.
+  const fixedChatBtnStyle = {
+    position: "fixed",
+    right: 8,
+    bottom: 60, // sits above footer copyright line as requested
+    width: 60,
+    height: 60,
+    zIndex: 9999,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "50%",
+  };
+
+  const chatImgStyle = {
+    width: 40,
+    height: 40,
+  };
+
+  // COPYRIGHT: make it centered horizontally and vertically within its reserved space.
+  // Adjust padding and alignment so the copyright sits visually in the middle of the footer area,
+  // not pinned to the bottom edge.
+  const copyrightRowStyle = {
+    display: "flex",
+    justifyContent: "center", // center horizontally
+    alignItems: "center",     // center vertically within the row
+    gap: "20px",
+    marginTop: "0.25rem",
+    paddingTop: "1rem",       // provide space above to balance visual center
+    paddingBottom: "1rem",    // provide space below to balance visual center
+    whiteSpace: "nowrap", // prevent wrapping to multiple lines
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    fontSize: "14px", // very small as requested
+    lineHeight: 1,
+    width: "100%",
+    boxSizing: "border-box",
+  };
+
+  const footerLogoSmallStyle = {
+    width: 50,
+    height: "auto",
+    marginRight: 0,
+    verticalAlign: "middle",
+    flexShrink: 0,
+  };
+
+  const copyrightTextStyle = {
+    fontWeight: 800, // make it very bold as requested
+    display: "inline-block",
+    verticalAlign: "middle",
+  };
+
+  // local state to control CustomerServiceModal visibility when user clicks the chat icon
+  const [csOpen, setCsOpen] = useState(false);
+
+  const handleOpenCustomerService = (e) => {
+    // Prevent default anchor behavior so we do NOT navigate away to a separate page
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+
+    // Open the modal locally
+    setCsOpen(true);
+
+    // Dispatch a global custom event so any globally mounted modal/listener can open as well.
+    try {
+      window.dispatchEvent(new CustomEvent("openCustomerService"));
+    } catch (err) {
+      // noop
+    }
+  };
+
+  return (
+    <footer className="footer" role="contentinfo" style={footerStyle}>
+      <div className="footer-main" style={footerMainStyle}>
+        <div className="footer-logo-row" style={logoRowStyle}>
+          <img src={logo} alt="Sequence Logo" className="footer-logo" />
+        </div>
+
+        <div className="footer-about" style={aboutStyle}>
+          We are a leading marketing agency that utilizes over 10 years of proprietary
+          data and insights, combined with a team of 70+ expert marketers. <br />
+          Join over 4,000 marketers who receive weekly digital marketing tips tailored
+          for industries like electronics, household goods, and many more.
+        </div>
+
+        <div
+          className="footer-links-row"
+          style={linksRowStyle}
+          aria-label="Footer links"
+        >
+          {/* COMPANY - stays left */}
+          <div style={companyColumnStyle}>
+            <div className="footer-section-title">COMPANY</div>
+
+            <Link to="/About" style={linkStyle}>
+              About Us
+            </Link>
+
+            <Link to="/JoinUs" style={linkStyle}>
+              Join Us
+            </Link>
+
+            <Link to="/ContactUs" style={linkStyle}>
+              Contact Us
+            </Link>
+
+            <Link to="/VIP" style={linkStyle}>
+              Premium Membership
+            </Link>
+
+            <Link to="/Certificate" style={linkStyle}>
+              Company Certificate
+            </Link>
+          </div>
+
+          {/* INFORMATION - pinned to right inside the footer container */}
+          <div style={informationColumnStyle} aria-label="Information links">
+            <div className="footer-section-title">INFORMATION</div>
+
+            <Link to="/PrivatePolicy" style={linkStyle}>
+              Privacy Policy
+            </Link>
+
+            <Link to="/TermsAndConditions" style={linkStyle}>
+              Terms and Conditions
+            </Link>
+
+            <Link to="/FAQ" style={linkStyle}>
+              FAQs
+            </Link>
+
+            <Link to="/Events" style={linkStyle}>
+              Latest Events
+            </Link>
+          </div>
+        </div>
+
+        <div className="footer-copyright-row" style={copyrightRowStyle}>
+          <img
+            src={logo}
+            alt="Sequence Logo small"
+            className="footer-logo-small"
+            style={footerLogoSmallStyle}
+          />
+          <span style={{ ...copyrightTextStyle, display: "inline-block", verticalAlign: "middle" }}>
+            &copy; 2026 - Sequence Commerce
+          </span>
+        </div>
+      </div>
+
+      {/* Single fixed floating chat button (visuals preserved by external CSS).
+          Inline style only controls position/size so it stays above the copyright line. 
+          Use an anchor but preventDefault in the click handler so we do not navigate to a /customer-service page.
+      */}
+      <a
+        href="/customer-service"
+        onClick={handleOpenCustomerService}
+        className="footer-chat-btn"
+        title="Customer Service"
+        aria-label="Contact customer service"
+        style={fixedChatBtnStyle}
+      >
+        <img src={chatIcon} alt="Chat Icon" style={chatImgStyle} />
+      </a>
+
+      {/* Local render of the CustomerServiceModal so clicking the chat icon opens it immediately.
+          The modal also listens for the "openCustomerService" event, so it will open if other parts
+          of the app dispatch that event.
+      */}
+      <CustomerServiceModal open={csOpen} onClose={() => setCsOpen(false)} />
+    </footer>
+  );
+}
