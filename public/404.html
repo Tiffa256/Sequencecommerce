@@ -6,27 +6,25 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Page not found — loading app...</title>
     <script>
-      // SPA fallback: load the real index.html and replace the document so client-side routing works.
+      // SPA fallback for GitHub Pages:
+      // Fetch the built index.html and replace the document so client-side routing works.
       (function () {
-        // Try to fetch the built index.html (same dist folder)
+        // Try to fetch the built index.html (same folder)
         fetch('./index.html', { cache: 'no-store' })
           .then(function (res) {
             if (!res.ok) throw new Error('index.html not found');
             return res.text();
           })
           .then(function (html) {
-            // Replace document with the built index.html so scripts/styles load
             document.open();
             document.write(html);
             document.close();
-            // Keep the current location (path + query + hash) so the SPA router sees the route
+            // Preserve the requested path so your SPA router sees the route
             history.replaceState({}, '', location.pathname + location.search + location.hash);
           })
           .catch(function () {
-            // If fetch fails, fall back to redirecting to root of the repo site
-            // Update the base below if you host under /<repo-name>/
-            var base = '/Sequencecommerce/';
-            location.replace(base);
+            // If fetch fails, redirect to repo root (update base if needed)
+            location.replace('/Sequencecommerce/');
           });
       })();
     </script>
