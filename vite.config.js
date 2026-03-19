@@ -4,9 +4,6 @@ import { resolve } from "path";
 import { copyFileSync, existsSync } from "fs";
 
 export default defineConfig({
-  // IMPORTANT: ensure base matches your repo name
-  base: "/Sequencecommerce/",
-
   plugins: [react()],
   resolve: {
     alias: {
