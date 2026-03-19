@@ -4,6 +4,10 @@ import { resolve } from "path";
 import { copyFileSync, existsSync } from "fs";
 
 export default defineConfig({
+  // Set base to your repository name so built assets load correctly on:
+  // https://tiffa256.github.io/Sequencecommerce/
+  base: "/Sequencecommerce/",
+
   plugins: [react()],
   resolve: {
     alias: {
