@@ -1,13 +1,11 @@
-name: Build and deploy to GitHub Pages
+name: Build and deploy to GitHub Pages (gh-pages)
 on:
   push:
     branches:
       - main
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages-deploy
@@ -33,7 +31,6 @@ jobs:
         run: npm run build
 
       - name: Ensure SPA fallback (copy index.html -> 404.html)
-        # copy index.html to 404.html so client-side routing works on GitHub Pages
         run: |
           if [ -f dist/index.html ]; then
             cp -f dist/index.html dist/404.html
@@ -44,15 +41,11 @@ jobs:
             exit 1
           fi
 
-      - name: Upload artifact for GitHub Pages
-        # This is the Pages-specific uploader (not the deprecated upload-artifact)
-        uses: actions/upload-pages-artifact@v1
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: './dist'
-
-  deploy:
-    needs: build-and-deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v1
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          # optional settings:
+          # publish_branch: gh-pages
+          # keep_files: false
