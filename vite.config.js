@@ -13,7 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://sequence-commerce-nsph.onrender.com",
+        target: "https://sequence2-backend.onrender.com",
         changeOrigin: true,
         secure: false,
       },
