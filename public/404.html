@@ -20,7 +20,7 @@
             history.replaceState({}, '', location.pathname + location.search + location.hash);
           })
           .catch(function () {
-            // If something goes wrong, go to the repo root (update if you rename repo)
+            // If fetch fails, redirect to site root (adjust if you rename repo)
             location.replace('/Sequencecommerce/');
           });
       })();
