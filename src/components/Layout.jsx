@@ -19,10 +19,10 @@ import CustomerServiceModal from "./CustomerServiceModal.jsx";
   - Ensures the top of the page is shown whenever navigation happens across the app.
   - Does not modify other files.
 
-  Added: a single top-level font-size wrapper set to 75% so the app's fonts are reduced globally.
-  - This reduces rem/em/percentage-based typography and icon fonts that inherit font-size.
-  - Layout structure, positioning, and element dimensions are kept unchanged.
-  - Portals mounted to document.body or elements using explicit pixel font sizes will not inherit this wrapper.
+  Added: global scaling (70%) applied on mount and reverted on unmount.
+  - Uses `zoom: 0.7` where supported (Chrome/Edge/Safari) and a `transform: scale(0.7)` + width compensation fallback for Firefox.
+  - This scales fonts, icons, spacing and portal-mounted overlays uniformly while preserving layout positions and responsiveness.
+  - Inline comment: scaling uses inline styles on document.documentElement and document.body, restored on unmount.
 */
 
 /* detect product path and extract numeric id */
@@ -283,13 +283,115 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [csOpen, setCsOpen] = useState(false);
 
-  // Global font-scale: set to 0.75 (75%).
-  // Change this constant if you want a different global font reduction.
-  const FONT_SCALE = 0.75;
+  // Global scaling factor (70% requested)
+  const SCALE = 0.7;
+  const inversePercent = (1 / SCALE) * 100; // ~142.857...
 
   // disable hamburger on auth pages
   const noHamburgerRoutes = ["/login", "/register"];
   const disableMenu = noHamburgerRoutes.includes(location.pathname);
+
+  /* Apply global scaling to the entire page (including portal elements).
+     Strategy:
+     - Use zoom where available (Chrome/Edge/Safari): document.documentElement.style.zoom = SCALE
+     - For browsers that don't support zoom (Firefox), use transform: scale(SCALE) on documentElement + compensate width so scaled content fills viewport.
+     - Save previous inline styles and restore them on unmount.
+  */
+  useEffect(() => {
+    if (typeof window === "undefined" || !document || !document.documentElement) return;
+
+    const docEl = document.documentElement;
+    const bodyEl = document.body;
+
+    // Save previous inline styles so we can restore them later
+    const previous = {
+      doc: {
+        zoom: docEl.style.zoom || "",
+        transform: docEl.style.transform || "",
+        transformOrigin: docEl.style.transformOrigin || "",
+        width: docEl.style.width || "",
+        height: docEl.style.height || "",
+        overflowX: docEl.style.overflowX || "",
+        boxSizing: docEl.style.boxSizing || "",
+      },
+      body: {
+        zoom: bodyEl.style.zoom || "",
+        transform: bodyEl.style.transform || "",
+        transformOrigin: bodyEl.style.transformOrigin || "",
+        width: bodyEl.style.width || "",
+        height: bodyEl.style.height || "",
+        overflowX: bodyEl.style.overflowX || "",
+        boxSizing: bodyEl.style.boxSizing || "",
+      },
+    };
+
+    try {
+      // Apply zoom (will have effect in Chromium-based browsers and Safari)
+      docEl.style.zoom = String(SCALE);
+      bodyEl.style.zoom = String(SCALE);
+
+      // Also apply transform fallback for browsers without zoom (Firefox).
+      // We also compensate width/height so content remains filling viewport.
+      const scaleStr = `scale(${SCALE})`;
+      docEl.style.WebkitTransform = scaleStr;
+      docEl.style.MsTransform = scaleStr;
+      docEl.style.transform = scaleStr;
+      docEl.style.WebkitTransformOrigin = "0 0";
+      docEl.style.MsTransformOrigin = "0 0";
+      docEl.style.transformOrigin = "0 0";
+
+      bodyEl.style.WebkitTransform = scaleStr;
+      bodyEl.style.MsTransform = scaleStr;
+      bodyEl.style.transform = scaleStr;
+      bodyEl.style.WebkitTransformOrigin = "0 0";
+      bodyEl.style.MsTransformOrigin = "0 0";
+      bodyEl.style.transformOrigin = "0 0";
+
+      // Compensate width/height so the scaled content fills viewport (prevents clipping)
+      const widthVal = `${inversePercent}%`;
+      const heightVal = `${inversePercent}vh`;
+      docEl.style.width = widthVal;
+      docEl.style.height = heightVal;
+      bodyEl.style.width = widthVal;
+      bodyEl.style.height = heightVal;
+
+      // Ensure box-sizing and overflow to keep layout neat
+      docEl.style.boxSizing = "border-box";
+      bodyEl.style.boxSizing = "border-box";
+      docEl.style.overflowX = "hidden";
+      bodyEl.style.overflowX = "hidden";
+    } catch (e) {
+      // Fail silently; nothing fatal if style operations are restricted
+      // (e.g., in some testing environments).
+    }
+
+    // Cleanup: restore previous inline styles
+    return () => {
+      try {
+        // Restore docEl
+        docEl.style.zoom = previous.doc.zoom;
+        docEl.style.transform = previous.doc.transform;
+        docEl.style.transformOrigin = previous.doc.transformOrigin;
+        docEl.style.width = previous.doc.width;
+        docEl.style.height = previous.doc.height;
+        docEl.style.overflowX = previous.doc.overflowX;
+        docEl.style.boxSizing = previous.doc.boxSizing;
+
+        // Restore bodyEl
+        bodyEl.style.zoom = previous.body.zoom;
+        bodyEl.style.transform = previous.body.transform;
+        bodyEl.style.transformOrigin = previous.body.transformOrigin;
+        bodyEl.style.width = previous.body.width;
+        bodyEl.style.height = previous.body.height;
+        bodyEl.style.overflowX = previous.body.overflowX;
+        bodyEl.style.boxSizing = previous.body.boxSizing;
+      } catch (e) {
+        // ignore
+      }
+    };
+    // run once on mount/unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* Global: ensure top of page is visible on navigation (applies to all pages) */
   useEffect(() => {
@@ -398,59 +500,39 @@ export default function Layout() {
     }
   }
 
-  // Top-level font-size wrapper style
-  const fontWrapperStyle = {
-    // Reduce typography globally to 75%
-    fontSize: `${FONT_SCALE * 100}%`,
-
-    // Prevent mobile browsers from auto-adjusting text size unexpectedly
-    WebkitTextSizeAdjust: "100%",
-    msTextSizeAdjust: "100%",
-
-    // Ensure inherited text-rendering and smoothing remain as-is
-    // (do not add transforms or zoom to avoid layout shifts)
-    background: "inherit",
-  };
-
   return (
-    // Outer container - keeps the viewport sizing as before
-    <div style={{ width: "100%", minHeight: "100vh", height: "100%", overflow: "hidden" }}>
-      {/* Font wrapper: everything inside will inherit a 75% font-size */}
-      <div id="sequence-font-wrapper" style={fontWrapperStyle}>
-        <div className="layout-container" style={{ background: "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-          {/* Global Header */}
-          <Header disableMenu={disableMenu} onMenuClick={() => setSidebarOpen(true)} />
+    <div className="layout-container" style={{ background: "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* Global Header */}
+      <Header disableMenu={disableMenu} onMenuClick={() => setSidebarOpen(true)} />
 
-          {/* Global Return strip: hide when showing product page (we show product's own Orders header instead) */}
-          {!productId && (
-            <div style={{ width: "100%", display: "flex", justifyContent: "center", boxSizing: "border-box" }}>
-              <div style={{ maxWidth: 1100, width: "100%", padding: "8px 16px", background: "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)", borderRadius: 0, marginTop: 8, marginBottom: 8, boxSizing: "border-box" }}>
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button onClick={() => navigate(-1)} style={{ background: "transparent", border: "none", color: "#ffffff", opacity: 0.95, fontSize: 14, cursor: "pointer", padding: "6px 10px" }} aria-label="Return Home Page">
-                    Return Home Page &gt;
-                  </button>
-                </div>
-              </div>
+      {/* Global Return strip: hide when showing product page (we show product's own Orders header instead) */}
+      {!productId && (
+        <div style={{ width: "100%", display: "flex", justifyContent: "center", boxSizing: "border-box" }}>
+          <div style={{ maxWidth: 1100, width: "100%", padding: "8px 16px", background: "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)", borderRadius: 0, marginTop: 8, marginBottom: 8, boxSizing: "border-box" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={() => navigate(-1)} style={{ background: "transparent", border: "none", color: "#ffffff", opacity: 0.95, fontSize: 14, cursor: "pointer", padding: "6px 10px" }} aria-label="Return Home Page">
+                Return Home Page &gt;
+              </button>
             </div>
-          )}
-
-          {/* Sidebar */}
-          {!disableMenu && <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
-
-          {/* Main: render ProductPage when product path, otherwise Outlet */}
-          <main className="layout-content" style={{ flex: 1 }}>
-            {productId ? <ProductPage product={productToRender} /> : <Outlet />}
-          </main>
-
-          {/* CustomerServiceModal mounted at Layout level so it overlays the current page (prevents navigating to a separate /customer-service page).
-              The modal opens when Footer dispatches the "openCustomerService" event or when the modal's open state is set here.
-          */}
-          <CustomerServiceModal open={csOpen} onClose={() => setCsOpen(false)} />
-
-          {/* Footer */}
-          <Footer />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Sidebar */}
+      {!disableMenu && <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
+
+      {/* Main: render ProductPage when product path, otherwise Outlet */}
+      <main className="layout-content" style={{ flex: 1 }}>
+        {productId ? <ProductPage product={productToRender} /> : <Outlet />}
+      </main>
+
+      {/* CustomerServiceModal mounted at Layout level so it overlays the current page (prevents navigating to a separate /customer-service page).
+          The modal opens when Footer dispatches the "openCustomerService" event or when the modal's open state is set here.
+      */}
+      <CustomerServiceModal open={csOpen} onClose={() => setCsOpen(false)} />
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
