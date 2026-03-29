@@ -19,12 +19,10 @@ import CustomerServiceModal from "./CustomerServiceModal.jsx";
   - Ensures the top of the page is shown whenever navigation happens across the app.
   - Does not modify other files.
 
-  Added: top-level SCALE wrapper that forces the entire rendered app UI to 65% visual size.
-  - Uses `zoom: 0.65` for Chrome/Edge/Safari and `transform: scale(0.65)` fallback for Firefox.
-  - `transformOrigin: "0 0"` ensures scaling originates at top-left.
-  - Wrapper width/minHeight are increased to compensate so scaled content fills viewport.
-  Note: Portals attached to document.body will not be scaled by this wrapper and must be
-  re-rooted inside the Layout if they should scale as well.
+  Added: a single top-level font-size wrapper set to 75% so the app's fonts are reduced globally.
+  - This reduces rem/em/percentage-based typography and icon fonts that inherit font-size.
+  - Layout structure, positioning, and element dimensions are kept unchanged.
+  - Portals mounted to document.body or elements using explicit pixel font sizes will not inherit this wrapper.
 */
 
 /* detect product path and extract numeric id */
@@ -285,9 +283,9 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [csOpen, setCsOpen] = useState(false);
 
-  // SCALE configuration - change SCALE to another number if you want different global scaling.
-  const SCALE = 0.65;
-  const inversePercent = (1 / SCALE) * 100; // ~153.846...
+  // Global font-scale: set to 0.75 (75%).
+  // Change this constant if you want a different global font reduction.
+  const FONT_SCALE = 0.75;
 
   // disable hamburger on auth pages
   const noHamburgerRoutes = ["/login", "/register"];
@@ -400,33 +398,25 @@ export default function Layout() {
     }
   }
 
-  // Wrapper style that applies the global scaling
-  const wrapperStyle = {
-    // Primary: use browser zoom where supported (Chrome, Edge, Safari)
-    zoom: SCALE,
+  // Top-level font-size wrapper style
+  const fontWrapperStyle = {
+    // Reduce typography globally to 75%
+    fontSize: `${FONT_SCALE * 100}%`,
 
-    // Fallback / cross-browser: transform scale (for Firefox, older browsers)
-    WebkitTransform: `scale(${SCALE})`,
-    msTransform: `scale(${SCALE})`,
-    transform: `scale(${SCALE})`,
-    WebkitTransformOrigin: "0 0",
-    msTransformOrigin: "0 0",
-    transformOrigin: "0 0",
+    // Prevent mobile browsers from auto-adjusting text size unexpectedly
+    WebkitTextSizeAdjust: "100%",
+    msTextSizeAdjust: "100%",
 
-    // Expand wrapper so the scaled content fills the viewport instead of being clipped.
-    width: `${inversePercent}%`,
-    minHeight: `${inversePercent}vh`,
-
-    // Avoid horizontal scrollbar caused by rounding; tweak if needed.
-    overflowX: "hidden",
+    // Ensure inherited text-rendering and smoothing remain as-is
+    // (do not add transforms or zoom to avoid layout shifts)
     background: "inherit",
   };
 
   return (
-    // Outer container - fills viewport and hides overflow; scaled wrapper inside compensates size.
+    // Outer container - keeps the viewport sizing as before
     <div style={{ width: "100%", minHeight: "100vh", height: "100%", overflow: "hidden" }}>
-      {/* Global scale wrapper - everything inside this will be visually reduced to 65% */}
-      <div id="sequence-scale-wrapper" style={wrapperStyle}>
+      {/* Font wrapper: everything inside will inherit a 75% font-size */}
+      <div id="sequence-font-wrapper" style={fontWrapperStyle}>
         <div className="layout-container" style={{ background: "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
           {/* Global Header */}
           <Header disableMenu={disableMenu} onMenuClick={() => setSidebarOpen(true)} />
