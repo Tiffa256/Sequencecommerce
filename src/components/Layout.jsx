@@ -18,6 +18,13 @@ import CustomerServiceModal from "./CustomerServiceModal.jsx";
     is used as a fallback; if nothing is available we show an id-based fallback.
   - Ensures the top of the page is shown whenever navigation happens across the app.
   - Does not modify other files.
+
+  Added: top-level SCALE wrapper that forces the entire rendered app UI to 65% visual size.
+  - Uses `zoom: 0.65` for Chrome/Edge/Safari and `transform: scale(0.65)` fallback for Firefox.
+  - `transformOrigin: "0 0"` ensures scaling originates at top-left.
+  - Wrapper width/minHeight are increased to compensate so scaled content fills viewport.
+  Note: Portals attached to document.body will not be scaled by this wrapper and must be
+  re-rooted inside the Layout if they should scale as well.
 */
 
 /* detect product path and extract numeric id */
@@ -278,6 +285,10 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [csOpen, setCsOpen] = useState(false);
 
+  // SCALE configuration - change SCALE to another number if you want different global scaling.
+  const SCALE = 0.65;
+  const inversePercent = (1 / SCALE) * 100; // ~153.846...
+
   // disable hamburger on auth pages
   const noHamburgerRoutes = ["/login", "/register"];
   const disableMenu = noHamburgerRoutes.includes(location.pathname);
@@ -389,39 +400,67 @@ export default function Layout() {
     }
   }
 
+  // Wrapper style that applies the global scaling
+  const wrapperStyle = {
+    // Primary: use browser zoom where supported (Chrome, Edge, Safari)
+    zoom: SCALE,
+
+    // Fallback / cross-browser: transform scale (for Firefox, older browsers)
+    WebkitTransform: `scale(${SCALE})`,
+    msTransform: `scale(${SCALE})`,
+    transform: `scale(${SCALE})`,
+    WebkitTransformOrigin: "0 0",
+    msTransformOrigin: "0 0",
+    transformOrigin: "0 0",
+
+    // Expand wrapper so the scaled content fills the viewport instead of being clipped.
+    width: `${inversePercent}%`,
+    minHeight: `${inversePercent}vh`,
+
+    // Avoid horizontal scrollbar caused by rounding; tweak if needed.
+    overflowX: "hidden",
+    background: "inherit",
+  };
+
   return (
-    <div className="layout-container" style={{ background: "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Global Header */}
-      <Header disableMenu={disableMenu} onMenuClick={() => setSidebarOpen(true)} />
+    // Outer container - fills viewport and hides overflow; scaled wrapper inside compensates size.
+    <div style={{ width: "100%", minHeight: "100vh", height: "100%", overflow: "hidden" }}>
+      {/* Global scale wrapper - everything inside this will be visually reduced to 65% */}
+      <div id="sequence-scale-wrapper" style={wrapperStyle}>
+        <div className="layout-container" style={{ background: "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+          {/* Global Header */}
+          <Header disableMenu={disableMenu} onMenuClick={() => setSidebarOpen(true)} />
 
-      {/* Global Return strip: hide when showing product page (we show product's own Orders header instead) */}
-      {!productId && (
-        <div style={{ width: "100%", display: "flex", justifyContent: "center", boxSizing: "border-box" }}>
-          <div style={{ maxWidth: 1100, width: "100%", padding: "8px 16px", background: "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)", borderRadius: 0, marginTop: 8, marginBottom: 8, boxSizing: "border-box" }}>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button onClick={() => navigate(-1)} style={{ background: "transparent", border: "none", color: "#ffffff", opacity: 0.95, fontSize: 14, cursor: "pointer", padding: "6px 10px" }} aria-label="Return Home Page">
-                Return Home Page &gt;
-              </button>
+          {/* Global Return strip: hide when showing product page (we show product's own Orders header instead) */}
+          {!productId && (
+            <div style={{ width: "100%", display: "flex", justifyContent: "center", boxSizing: "border-box" }}>
+              <div style={{ maxWidth: 1100, width: "100%", padding: "8px 16px", background: "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)", borderRadius: 0, marginTop: 8, marginBottom: 8, boxSizing: "border-box" }}>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button onClick={() => navigate(-1)} style={{ background: "transparent", border: "none", color: "#ffffff", opacity: 0.95, fontSize: 14, cursor: "pointer", padding: "6px 10px" }} aria-label="Return Home Page">
+                    Return Home Page &gt;
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Sidebar */}
+          {!disableMenu && <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
+
+          {/* Main: render ProductPage when product path, otherwise Outlet */}
+          <main className="layout-content" style={{ flex: 1 }}>
+            {productId ? <ProductPage product={productToRender} /> : <Outlet />}
+          </main>
+
+          {/* CustomerServiceModal mounted at Layout level so it overlays the current page (prevents navigating to a separate /customer-service page).
+              The modal opens when Footer dispatches the "openCustomerService" event or when the modal's open state is set here.
+          */}
+          <CustomerServiceModal open={csOpen} onClose={() => setCsOpen(false)} />
+
+          {/* Footer */}
+          <Footer />
         </div>
-      )}
-
-      {/* Sidebar */}
-      {!disableMenu && <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
-
-      {/* Main: render ProductPage when product path, otherwise Outlet */}
-      <main className="layout-content" style={{ flex: 1 }}>
-        {productId ? <ProductPage product={productToRender} /> : <Outlet />}
-      </main>
-
-      {/* CustomerServiceModal mounted at Layout level so it overlays the current page (prevents navigating to a separate /customer-service page).
-          The modal opens when Footer dispatches the "openCustomerService" event or when the modal's open state is set here.
-      */}
-      <CustomerServiceModal open={csOpen} onClose={() => setCsOpen(false)} />
-
-      {/* Footer */}
-      <Footer />
+      </div>
     </div>
   );
 }
