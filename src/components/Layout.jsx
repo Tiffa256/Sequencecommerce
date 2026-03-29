@@ -19,10 +19,11 @@ import CustomerServiceModal from "./CustomerServiceModal.jsx";
   - Ensures the top of the page is shown whenever navigation happens across the app.
   - Does not modify other files.
 
-  Added: global scaling (70%) applied on mount and reverted on unmount.
-  - Uses `zoom: 0.7` where supported (Chrome/Edge/Safari) and a `transform: scale(0.7)` + width compensation fallback for Firefox.
-  - This scales fonts, icons, spacing and portal-mounted overlays uniformly while preserving layout positions and responsiveness.
-  - Inline comment: scaling uses inline styles on document.documentElement and document.body, restored on unmount.
+  Fixes applied:
+  - Set root font-size to 70% (applies globally to the app including many icon fonts that inherit)
+  - Apply same page background on body to avoid white gaps on mobile after scaling change
+  - Restore previous inline styles on unmount
+  - Removed document-level transform/zoom/width/height compensation which caused the large white area
 */
 
 /* detect product path and extract numeric id */
@@ -283,114 +284,57 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [csOpen, setCsOpen] = useState(false);
 
-  // Global scaling factor (70% requested)
-  const SCALE = 0.7;
-  const inversePercent = (1 / SCALE) * 100; // ~142.857...
+  // Desired font scale (70%)
+  const FONT_SCALE = 0.7;
 
   // disable hamburger on auth pages
   const noHamburgerRoutes = ["/login", "/register"];
   const disableMenu = noHamburgerRoutes.includes(location.pathname);
 
-  /* Apply global scaling to the entire page (including portal elements).
-     Strategy:
-     - Use zoom where available (Chrome/Edge/Safari): document.documentElement.style.zoom = SCALE
-     - For browsers that don't support zoom (Firefox), use transform: scale(SCALE) on documentElement + compensate width so scaled content fills viewport.
-     - Save previous inline styles and restore them on unmount.
+  /* Safely apply root font-size and page background on mount, restore on unmount.
+     This scales rem/em fonts and many icon fonts while avoiding transforms/zoom that caused the mobile white gap.
   */
   useEffect(() => {
-    if (typeof window === "undefined" || !document || !document.documentElement) return;
+    if (typeof window === "undefined" || !document) return;
 
     const docEl = document.documentElement;
     const bodyEl = document.body;
 
-    // Save previous inline styles so we can restore them later
     const previous = {
-      doc: {
-        zoom: docEl.style.zoom || "",
-        transform: docEl.style.transform || "",
-        transformOrigin: docEl.style.transformOrigin || "",
-        width: docEl.style.width || "",
-        height: docEl.style.height || "",
-        overflowX: docEl.style.overflowX || "",
-        boxSizing: docEl.style.boxSizing || "",
-      },
-      body: {
-        zoom: bodyEl.style.zoom || "",
-        transform: bodyEl.style.transform || "",
-        transformOrigin: bodyEl.style.transformOrigin || "",
-        width: bodyEl.style.width || "",
-        height: bodyEl.style.height || "",
-        overflowX: bodyEl.style.overflowX || "",
-        boxSizing: bodyEl.style.boxSizing || "",
-      },
+      htmlFontSize: docEl.style.fontSize || "",
+      bodyFontSize: bodyEl.style.fontSize || "",
+      bodyBackground: bodyEl.style.background || "",
+      webkitTextSizeAdjust: docEl.style.WebkitTextSizeAdjust || "",
+      msTextSizeAdjust: docEl.style.msTextSizeAdjust || "",
     };
 
     try {
-      // Apply zoom (will have effect in Chromium-based browsers and Safari)
-      docEl.style.zoom = String(SCALE);
-      bodyEl.style.zoom = String(SCALE);
+      // Set 70% font at root so rem/em scale down across app.
+      docEl.style.fontSize = `${FONT_SCALE * 100}%`;
+      bodyEl.style.fontSize = `${FONT_SCALE * 100}%`;
 
-      // Also apply transform fallback for browsers without zoom (Firefox).
-      // We also compensate width/height so content remains filling viewport.
-      const scaleStr = `scale(${SCALE})`;
-      docEl.style.WebkitTransform = scaleStr;
-      docEl.style.MsTransform = scaleStr;
-      docEl.style.transform = scaleStr;
-      docEl.style.WebkitTransformOrigin = "0 0";
-      docEl.style.MsTransformOrigin = "0 0";
-      docEl.style.transformOrigin = "0 0";
+      // Prevent mobile browsers from auto-adjusting text size which can break layout
+      docEl.style.WebkitTextSizeAdjust = "100%";
+      docEl.style.msTextSizeAdjust = "100%";
 
-      bodyEl.style.WebkitTransform = scaleStr;
-      bodyEl.style.MsTransform = scaleStr;
-      bodyEl.style.transform = scaleStr;
-      bodyEl.style.WebkitTransformOrigin = "0 0";
-      bodyEl.style.MsTransformOrigin = "0 0";
-      bodyEl.style.transformOrigin = "0 0";
-
-      // Compensate width/height so the scaled content fills viewport (prevents clipping)
-      const widthVal = `${inversePercent}%`;
-      const heightVal = `${inversePercent}vh`;
-      docEl.style.width = widthVal;
-      docEl.style.height = heightVal;
-      bodyEl.style.width = widthVal;
-      bodyEl.style.height = heightVal;
-
-      // Ensure box-sizing and overflow to keep layout neat
-      docEl.style.boxSizing = "border-box";
-      bodyEl.style.boxSizing = "border-box";
-      docEl.style.overflowX = "hidden";
-      bodyEl.style.overflowX = "hidden";
+      // Ensure the page background covers full viewport so no white gap shows
+      // (we also keep the layout-container gradient; this makes the whole viewport consistent)
+      bodyEl.style.background = "linear-gradient(180deg,#071e2f 0%,#0b2b4a 100%)";
     } catch (e) {
-      // Fail silently; nothing fatal if style operations are restricted
-      // (e.g., in some testing environments).
+      // ignore style failures
     }
 
-    // Cleanup: restore previous inline styles
     return () => {
       try {
-        // Restore docEl
-        docEl.style.zoom = previous.doc.zoom;
-        docEl.style.transform = previous.doc.transform;
-        docEl.style.transformOrigin = previous.doc.transformOrigin;
-        docEl.style.width = previous.doc.width;
-        docEl.style.height = previous.doc.height;
-        docEl.style.overflowX = previous.doc.overflowX;
-        docEl.style.boxSizing = previous.doc.boxSizing;
-
-        // Restore bodyEl
-        bodyEl.style.zoom = previous.body.zoom;
-        bodyEl.style.transform = previous.body.transform;
-        bodyEl.style.transformOrigin = previous.body.transformOrigin;
-        bodyEl.style.width = previous.body.width;
-        bodyEl.style.height = previous.body.height;
-        bodyEl.style.overflowX = previous.body.overflowX;
-        bodyEl.style.boxSizing = previous.body.boxSizing;
+        docEl.style.fontSize = previous.htmlFontSize;
+        bodyEl.style.fontSize = previous.bodyFontSize;
+        bodyEl.style.background = previous.bodyBackground;
+        docEl.style.WebkitTextSizeAdjust = previous.webkitTextSizeAdjust;
+        docEl.style.msTextSizeAdjust = previous.msTextSizeAdjust;
       } catch (e) {
         // ignore
       }
     };
-    // run once on mount/unmount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* Global: ensure top of page is visible on navigation (applies to all pages) */
