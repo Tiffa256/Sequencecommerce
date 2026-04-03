@@ -178,7 +178,7 @@ export default function CustomerServiceModal({ open, onClose }) {
                 return;
               }
 
-              const chatUrl = `https://chat.keymusecommerce.com/?user=${encodeURIComponent(username)}`;
+              const chatUrl = `/?user=${encodeURIComponent(username)}`;
               window.open(chatUrl, "_blank");
               onClose();
             }}
